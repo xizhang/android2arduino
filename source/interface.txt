@@ -1,0 +1,14 @@
+// Arduino methods
+method void pinMode(int pin,int mode)
+method void digitalWrite(int pin,int value)
+method void analogWrite(int pin,int value)
+method int digitalRead(int pin)
+method int analogRead(int pin)
+// Arduino objects
+object Servo
+object_method Servo void attach(int pin)
+object_method Servo void attach(int pin,int min,int max)
+object_method Servo void write(int value)
+object_method Servo void writeMicroseconds(int value)
+// Arduino event codes
+event reboot
