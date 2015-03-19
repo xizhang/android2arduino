@@ -2,14 +2,22 @@
 public class ArduinoGenerator {
     
     MiddleCode mCode;
-    public static final String TAB = "  ";
+    public static final String TAB = "    ";
     
     public ArduinoGenerator(MiddleCode code) {
         mCode = code;
     }
     
-    public String generate() {
-        String result = "void OnActionRecevied(int id) {\n";
+    public void run() {
+        // Generate code
+        String template = FileUtils.loadTemplateAsString("arduino/android_template.cpp");
+        String switchString = template.replace("// _BIG_SWITCH_", generateBigSwitch());
+        FileUtils.writeStringToGen("arduino/android.cpp", switchString);
+    }
+     
+    
+    public String generateBigSwitch() {
+        String result = "\n";
         result += TAB + "switch(id) {\n";
         
         for (MiddleMethod method : mCode.methods) {
@@ -21,7 +29,6 @@ public class ArduinoGenerator {
             result += generateObject(o, TAB);
         }*/
         result += TAB + "}\n";
-        result += "}\n";
         return result;
     }
     
@@ -42,22 +49,23 @@ public class ArduinoGenerator {
         boolean isMember = objectName != null;
         String returnValueString = "";
         if (method.hasReturnValue()) {
-            returnValueString =  generateType(method.returnType.type) + " returnValue = ";
+            returnValueString =  generateType(method.returnType.type) + " returnValue" + method.id + " = ";
         }
         
-        result += prefix + "case " + method.id + ":\n";
+        result += prefix + "case " + method.id + ": {\n";
         String methodParamString = "";
         for (int i = 0; i < method.params.size(); i++) {
             MiddleParam param = method.params.get(i);
-            result += prefix + TAB + generateType(param.type) + " " + param.name 
+            result += prefix + TAB + generateType(param.type) + " " + param.name + method.id
                     + " = " + getTypeReader(param.type) + "();\n";    
-            methodParamString += param.name;
+            methodParamString += param.name + method.id;
             if (i < method.params.size() - 1) {
                 methodParamString += ", ";
             }
         }
         result += prefix + TAB + returnValueString + method.name + "(" + methodParamString + ");\n";
         result += prefix + TAB + "break;\n";
+        result += prefix + "}\n";
         return result;
     }
 

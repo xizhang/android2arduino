@@ -3,17 +3,17 @@ import java.util.List;
 public class AndroidGenerator {
     
     private MiddleCode mCode;
-    public static final String TAB = "  ";
+    public static final String TAB = "    ";
     
     public AndroidGenerator(MiddleCode code) {
         mCode = code;
     }
     
     public void run() {
-        String androidMainCode = generate();
-        String mainTemplate = FileUtils.loadTemplateAsString("Arduino.java");
-        String mainFileString = mainTemplate.replace("// _PLACE_HOLDER_", androidMainCode);
-        System.out.println(mainFileString);
+        // Generate code
+        String arduinoTemplate = FileUtils.loadTemplateAsString("android/ArduinoTemplate.java");
+        String arduinoString = arduinoTemplate.replace("// _PLACE_HOLDER_", generate());
+        FileUtils.writeStringToGen("android/Arduino.java", arduinoString);
     }
      
     public String generate() {
@@ -27,12 +27,9 @@ public class AndroidGenerator {
         return result;
     }
     
-    private void copyFiles() {
-        
-    }
     
     private String generateObject(MiddleObject o, String prefix) {
-        String memberString = prefix + TAB + "public final int objectId = Utils.getNextObjectId();\n";
+        String memberString = prefix + TAB + "public final int objectId = nextObjectId();\n";
         String constructorString = "";
         for (MiddleMethod method : o.constructors) {
             constructorString += generateMethod(method, prefix + TAB, true, true);
@@ -67,8 +64,8 @@ public class AndroidGenerator {
         }
         return String.format("\n" +
                 prefix + "public%s %s(%s) {\n" +
-                generateDataBuilder(method.id, method.params, TAB + prefix, isMember) +
-                prefix + TAB + returnPrefixString + "mTransceiver.%s(dataBuilder.getBytes());\n" +
+                generateByteBuffer(method.id, method.params, TAB + prefix, isMember) +
+                prefix + TAB + returnPrefixString + "mTransceiver.%s(byteBuffer.array());\n" +
                 generateReturnString(prefix + TAB, method.returnType) +
                 prefix + "}\n", 
                 returnTypeString, 
@@ -77,16 +74,28 @@ public class AndroidGenerator {
                 sendMethodName);
     }
     
-    private String generateDataBuilder(int id, List<MiddleParam> params, String prefix, boolean isMember) {
-        String result = prefix + "DataBuilder dataBuilder = new DataBuilder();\n";
-        result += prefix + "dataBuilder.add(" + id + ");\n";
+    private String generateByteBuffer(int id, List<MiddleParam> params, String prefix, boolean isMember) {
+        int byteSize = getByteSize(params, isMember);
+        String result = prefix + "ByteBuffer byteBuffer = ByteBuffer.allocate(" + byteSize + ");\n";
+        result += prefix + "byteBuffer.putInt(" + id + ");\n";
         if (isMember) {
-            result += prefix + "dataBuilder.add(this.objectId);\n";
+            result += prefix + "byteBuffer.putInt(this.objectId);\n";
         }
         for (MiddleParam param : params) {
-            result += prefix + "dataBuilder.add(" + param.name + ");\n";
+            result += prefix + "byteBuffer." + getGetByte(param.type) + "(" + param.name + ");\n";
         }
         return result;
+    }
+    
+    private int getByteSize(List<MiddleParam> params, boolean isMember) {
+        int result = 0;
+        for (int i = 0; i < params.size(); i++) {
+            result += getTypeSize(params.get(i).type);
+        }
+        if (isMember) {
+            result += getTypeSize(MiddleType.IntType);
+        }
+        return result + getTypeSize(MiddleType.IntType);
     }
     
     private String generateParams(List<MiddleParam> params) {
@@ -114,13 +123,29 @@ public class AndroidGenerator {
         throw new RuntimeException("unknown type " + type);
     }
     
+    private int getTypeSize(MiddleType type) {
+        switch (type) {
+            case IntType:
+                return 4;
+        }
+        throw new RuntimeException("unknown type " + type);
+    }
+    
+        private String getGetByte(MiddleType type) {
+        switch (type) {
+            case IntType:
+                return "getInt";
+        }
+        throw new RuntimeException("unknown type " + type);
+    }
+    
     private String generateReturnString(String prefix, MiddleParam param) {
         if (param == null) {
             return "";
         }
         switch (param.type) {
             case IntType:
-                return prefix + "return DataParser.parseInt(bytes);\n";
+                return prefix + "return ByteBuffer.wrap(bytes).getInt();\n";
         }
         return "";
     }

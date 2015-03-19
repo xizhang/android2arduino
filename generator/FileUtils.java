@@ -10,14 +10,22 @@ import java.nio.file.Paths;
 public class FileUtils {
 	
 	
-    private static final String SRC_PATH = "../source/android/";
-    private static final String DES_PATH = "../gen/android/";
+    private static final String SRC_PATH = "../source/";
+    private static final String DES_PATH = "../gen/";
     
 	
     public static String loadTemplateAsString(String fileName) {
     	try {
         	byte[] encoded = Files.readAllBytes(Paths.get(SRC_PATH + fileName));
         	return new String(encoded, "UTF-8");
+    	} catch (Exception e) {
+    		throw new RuntimeException(e.toString());
+    	}
+    }
+    
+    public static void writeStringToGen(String filename, String content) {
+    	try {
+			Files.write(Paths.get(DES_PATH + filename), content.getBytes());
     	} catch (Exception e) {
     		throw new RuntimeException(e.toString());
     	}
